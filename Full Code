@@ -1,0 +1,177 @@
+package sample;
+
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Main extends Application {
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) throws Exception{
+        newScene = new Scene(makeBoard());
+
+        primaryStage.setScene(newScene);
+        primaryStage.show();
+    }
+
+    private List<Tile> boyNextDoor(Tile tile){
+        List<Tile> girlNextDoor = new ArrayList<Tile>();
+
+        //looking at the tiles around the current tile
+        int[] coords = new int[]{
+                -1, -1,
+                -1, 0,
+                -1, 1,
+                0, -1,
+                0, 1,
+                1, -1,
+                1, 0,
+                1, 1};
+
+
+        for(int i = 0; i <coords.length; i++){
+            int posX = coords[i];
+            int posY = coords[++i];
+
+            int neX = tile.xCoord + posX;
+            int nye = tile.yCoord + posY;
+
+            if (neX >= 0 && neX < horizontalTile
+            && nye >= 0 && nye < verticalTile){
+                 girlNextDoor.add(layout[neX][nye]);
+
+            }
+        }
+        return girlNextDoor;
+
+    }
+
+    private Parent makeBoard(){
+        Pane root = new Pane();
+        root.setPrefSize(600,800);
+
+        for (int yCoord = 0; yCoord < verticalTile;yCoord++){
+            for(int xCoord = 0; xCoord < horizontalTile; xCoord++){
+                Tile tile = new Tile(xCoord,yCoord, Math.random() < 0.2);
+
+                layout[xCoord][yCoord] = tile;
+                root.getChildren().add(tile);
+
+
+            }
+        }
+
+        for (int yCoord = 0; yCoord < verticalTile;yCoord++){
+            for(int xCoord= 0; xCoord < horizontalTile; xCoord++) {
+                    Tile tile = layout[xCoord][yCoord];
+
+                    //skipping mined tiles
+                    if(tile.mined){
+                        continue;
+                    }
+
+                    //get list of boysnextdoor, take out any friends that have no mines
+                    long mines = boyNextDoor(tile).stream().filter(tile1 -> tile1.mined).count();
+
+                    if (mines > 0) {
+                        tile.text.setText(String.valueOf(mines));
+                    }
+            }
+        }
+        return root;
+    }
+
+    private class Tile extends StackPane {
+        public Tile(int xCoord, int yCoord, boolean mined){
+
+            this.xCoord = xCoord;
+            this.yCoord = yCoord;
+            this.mined = mined;
+
+            //coloring our squares
+            border.setFill(Color.PEACHPUFF);
+            border.setStroke(Color.PLUM);
+
+            //setting font appearance. Default is hidden
+            text.setFill(Color.PEACHPUFF);
+            text.setText(mined ? "M" : "");
+            text.setFont(Font.font(20));
+            text.setVisible(false);
+
+            getChildren().addAll(border,text);
+
+            setTranslateX(xCoord*tileDim);
+            setTranslateY(yCoord*tileDim);
+
+            setOnMouseClicked(e -> show());
+        }
+
+        public void show(){
+            if(shown)
+                return;
+
+            if(mined){
+                System.out.println("You Died.");
+                newScene.setRoot(makeBoard());
+                return;
+
+            }
+
+            shown = true;
+            text.setVisible(true);
+            border.setFill(Color.PALEVIOLETRED);
+
+            if(text.getText().isEmpty()) {
+                boyNextDoor(this).forEach(Tile::show);
+            }
+        }
+        //tile visibility, default hidden
+       private boolean shown = false;
+
+
+
+        //placement of tile on layout
+        private int xCoord;
+        private int yCoord;
+
+        //does this bomb have a mine
+        private final boolean mined;
+
+        //text that denotes what's up with the tile
+        private Text text = new Text();
+        private Rectangle border = new Rectangle(tileDim - 2, tileDim -2);
+
+        //bombs that are touching the tile
+        private int touchMines = 0;
+    }
+
+    private Scene newScene;
+    //tile dimension
+    private static final int tileDim = 40;
+
+    //size of game layout
+    private static final int width = 600;
+    private static final int height = 800;
+
+    //number of tiles per row and column
+    private static final int horizontalTile = width/40;
+    private static final int verticalTile = height/40;
+
+    //creating board layout
+    private Tile[][] layout = new Tile[horizontalTile][verticalTile];
+}
